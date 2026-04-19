@@ -1,3 +1,5 @@
 node_modules/
 wan
 references/CHP*.html
+.DS_Store
+**/.DS_Store

@@ -1,4 +1,18 @@
-import { NOTE_TYPES, LABEL_LEVELS, type NoteType, type LabelLevel, type WanNote, type AffinityLabel } from "./types";
+import {
+  NOTE_TYPES,
+  LABEL_LEVELS,
+  LINK_KINDS,
+  TASK_STATUSES,
+  type NoteType,
+  type LabelLevel,
+  type LinkKind,
+  type TaskStatus,
+  type WanNote,
+  type AffinityLabel,
+  type TaskNode,
+  type SessionEntry,
+  type SourceRef,
+} from "./types";
 
 export function validateNoteType(input: string): NoteType {
   const normalized = input.toLowerCase().trim();
@@ -92,4 +106,80 @@ export function truncate(str: string, len: number): string {
 
 export function padRight(str: string, len: number): string {
   return str + " ".repeat(Math.max(0, len - str.length));
+}
+
+// ── New: link kinds, source refs, task IDs, session IDs ────
+
+export function validateLinkKind(input: string): LinkKind {
+  const normalized = input.toLowerCase().trim();
+  if (LINK_KINDS.includes(normalized as LinkKind)) {
+    return normalized as LinkKind;
+  }
+  throw new Error(`Invalid link kind "${input}". Valid: ${LINK_KINDS.join(", ")}`);
+}
+
+export function validateTaskStatus(input: string): TaskStatus {
+  const normalized = input.toLowerCase().trim();
+  if (TASK_STATUSES.includes(normalized as TaskStatus)) {
+    return normalized as TaskStatus;
+  }
+  throw new Error(`Invalid task status "${input}". Valid: ${TASK_STATUSES.join(", ")}`);
+}
+
+export function validateTaskId(id: string): void {
+  if (!/^T\d{3,}$/.test(id)) {
+    throw new Error(`Invalid task ID "${id}". Expected format: T001, T002, ...`);
+  }
+}
+
+export function nextTaskId(tasks: TaskNode[]): string {
+  if (tasks.length === 0) return "T001";
+  const max = Math.max(...tasks.map((t) => parseInt(t.id.slice(1), 10)));
+  return `T${String(max + 1).padStart(3, "0")}`;
+}
+
+export function nextSessionId(sessions: SessionEntry[]): string {
+  if (sessions.length === 0) return "SES-001";
+  const max = Math.max(...sessions.map((s) => parseInt(s.id.slice(4), 10)));
+  return `SES-${String(max + 1).padStart(3, "0")}`;
+}
+
+// "path/to/file.rs:142-180" or "path/to/file.rs:142" or "path/to/file.rs"
+export function parseSourceRef(raw: string, note?: string): SourceRef {
+  const trimmed = raw.trim();
+  if (!trimmed) throw new Error("Source ref cannot be empty");
+  const lastColon = trimmed.lastIndexOf(":");
+  if (lastColon <= 0) {
+    return note ? { path: trimmed, note } : { path: trimmed };
+  }
+  const after = trimmed.slice(lastColon + 1);
+  // accept "142", "142-180", "142,150,160"
+  if (/^\d+(-\d+)?(,\d+(-\d+)?)*$/.test(after)) {
+    const ref: SourceRef = { path: trimmed.slice(0, lastColon), lines: after };
+    if (note) ref.note = note;
+    return ref;
+  }
+  return note ? { path: trimmed, note } : { path: trimmed };
+}
+
+export function formatSourceRef(ref: SourceRef): string {
+  const base = ref.lines ? `${ref.path}:${ref.lines}` : ref.path;
+  return ref.note ? `${base} — ${ref.note}` : base;
+}
+
+// Relative-time helper for human-readable history/log views
+export function ago(iso: string): string {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const sec = Math.floor((now - then) / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day}d ago`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(mo / 12)}y ago`;
 }

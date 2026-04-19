@@ -6,9 +6,10 @@ import {
   nextNoteSeq,
   formatNoteId,
   parseTags,
+  parseSourceRef,
   nowISO,
 } from "../utils";
-import type { WanNote } from "../types";
+import type { WanNote, SourceRef } from "../types";
 
 export async function noteAdd(args: string[]): Promise<void> {
   ensureInitialized();
@@ -21,6 +22,8 @@ export async function noteAdd(args: string[]): Promise<void> {
       type: { type: "string", short: "n", default: "observation" },
       tags: { type: "string", short: "t" },
       bin: { type: "string", short: "b" },
+      detail: { type: "string", short: "d" },
+      ref: { type: "string", multiple: true },
     },
     allowPositionals: true,
   });
@@ -58,6 +61,13 @@ export async function noteAdd(args: string[]): Promise<void> {
 
   if (values.bin) {
     note.bin = values.bin.toLowerCase().trim();
+  }
+  if (values.detail) {
+    note.detail = values.detail.trim();
+  }
+  if (values.ref && values.ref.length > 0) {
+    const refs: SourceRef[] = values.ref.map((r) => parseSourceRef(r));
+    note.refs = refs;
   }
 
   store.notes.push(note);

@@ -10,6 +10,13 @@ import { exportNotes } from "./commands/export";
 import { affinity } from "./commands/affinity";
 import { philosophy } from "./commands/philosophy";
 import { render } from "./commands/render";
+import { ref } from "./commands/ref";
+import { status } from "./commands/status";
+import { session } from "./commands/session";
+import { link } from "./commands/link";
+import { todo } from "./commands/todo";
+import { task } from "./commands/task";
+import { resume } from "./commands/resume";
 
 const HELP = `
 wan — Work Activity Notes CLI
@@ -18,11 +25,16 @@ Usage: wan <command> [options]
 
 Commands:
   init                          Initialize .wan/ in current directory
+  resume                        Bootstrap blob: status + focus + history + open todos
   source add <file|->           Add a raw thought dump as source
-  note add -s -r [-n] "text"    Add a synthesized note
+
+  note add -s -r [-n] [-d --ref] "text"
+                                Add a synthesized note. -d=detail path,
+                                --ref FILE:LINES (repeatable) for provenance
   note bulk -s -f <file>        Bulk import notes from JSON
   note list [--type] [--tag] [--source] [--role] [--bin] [--full]
   note edit <id> [--content] [--type] [--tags] [--role] [--bin]
+                                [--detail PATH] [--add-ref ...] [--rm-ref N] [--clear-refs]
   note rm <id> [<id2> ...]      Remove note(s)
   stats                         Show note statistics
   export [--format md|json|csv] Export notes
@@ -37,6 +49,40 @@ Commands:
   affinity ungroup <labelId>             Remove from parent
   affinity tree                          Show full WAAD hierarchy
   affinity unassigned                    Show ungrouped notes
+
+  task                          Show full work tree + current path
+  task add "title" [-p PARENT] [-i intent] [--focus]
+  task tree [<rootId>] [--all]  Print tree (hides done/abandoned by default)
+  task show <id>                Node details + recent events
+  task edit <id> [--title|--intent|--status|--parent]
+  task rm <id> [--recursive]    Delete (refuses if children unless -r)
+  task focus <id>               Set current focus (records event)
+  task pop                      Move focus to parent
+  task done|abandon|block|unblock <id>
+  task current | path           Breadcrumb root → current
+  task history [--n N] [--task ID]   Chronological focus events
+
+  ref add <noteId> <file:lines> ["context"]   First-class provenance
+  ref rm <noteId> <index>
+  ref list [<noteId>]
+
+  link add <a> <b> --kind <calls|produces|requires|refines|relates> ["context"]
+  link rm <a> <b>
+  link list [<noteId>]
+  link graph                    All edges (text DAG)
+
+  session start "intent"        Open a working session
+  session end "summary"         Close + auto-attach notes/labels created within
+  session list / show <id> / current
+
+  status [show]                 Print narrative status
+  status set "..."              Overwrite with one-line text
+  status append "..."           Append a timestamped line
+  status edit                   Open status.md in $EDITOR
+  status clear
+
+  todo [--type] [--tag] [--source] [--role] [--full]
+                                List unresolved data-holes & design-questions
 
   render init "Deck Title"       Create a new card deck
   render add --title "..." --body "..." [--label --highlight --accent --tag]
@@ -56,8 +102,13 @@ Flags:
                   design-question, data-hole
   -t, --tags      Comma-separated tags
   -b, --bin       Optional rough data bin (free-form, pre-WAAD sorting)
+  -d, --detail    Path to a fuller doc (math, code, diagrams) for the note
+      --ref       FILE:LINES (repeatable) — first-class provenance
   -l, --level     Affinity label level: 1 (blue), 2 (pink), 3 (green)
-  -f, --full      Full output (note list), or file path (note bulk)
+  -p, --parent    Parent task ID (T001, ...)
+  -i, --intent    Longer-form why / acceptance criteria
+  -f, --full      Full output (note list), or file path (note bulk),
+                  or focus newly-added task
 `.trim();
 
 export async function run(): Promise<void> {
@@ -73,6 +124,10 @@ export async function run(): Promise<void> {
   switch (cmd) {
     case "init":
       init(rest);
+      break;
+
+    case "resume":
+      await resume(rest);
       break;
 
     case "source": {
@@ -114,6 +169,32 @@ export async function run(): Promise<void> {
 
     case "affinity":
       await affinity(rest);
+      break;
+
+    case "task":
+    case "t":
+      await task(rest);
+      break;
+
+    case "ref":
+      await ref(rest);
+      break;
+
+    case "link":
+      await link(rest);
+      break;
+
+    case "session":
+    case "ses":
+      await session(rest);
+      break;
+
+    case "status":
+      await status(rest);
+      break;
+
+    case "todo":
+      await todo(rest);
       break;
 
     case "stats":

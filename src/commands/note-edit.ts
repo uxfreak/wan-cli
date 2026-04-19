@@ -1,6 +1,11 @@
 import { parseArgs } from "node:util";
 import { ensureInitialized, readNotes, writeNotes } from "../store";
-import { validateNoteType, parseTags, nowISO } from "../utils";
+import {
+  validateNoteType,
+  parseTags,
+  parseSourceRef,
+  nowISO,
+} from "../utils";
 
 export async function noteEdit(args: string[]): Promise<void> {
   ensureInitialized();
@@ -13,12 +18,20 @@ export async function noteEdit(args: string[]): Promise<void> {
       tags: { type: "string", short: "t" },
       role: { type: "string", short: "r" },
       bin: { type: "string", short: "b" },
+      detail: { type: "string", short: "d" },
+      "add-ref": { type: "string", multiple: true },
+      "rm-ref": { type: "string", multiple: true },
+      "clear-refs": { type: "boolean", default: false },
     },
     allowPositionals: true,
   });
 
   const noteId = positionals[0];
-  if (!noteId) throw new Error("Missing note ID. Usage: wan note edit <id> [--content ...] [--type ...] [--tags ...] [--role ...] [--bin ...]");
+  if (!noteId) {
+    throw new Error(
+      "Missing note ID. Usage: wan note edit <id> [--content ...] [--type ...] [--tags ...] [--role ...] [--bin ...] [--detail PATH] [--add-ref FILE:LINES]... [--rm-ref INDEX]... [--clear-refs]",
+    );
+  }
 
   const store = await readNotes();
   const note = store.notes.find((n) => n.id === noteId);
@@ -52,9 +65,36 @@ export async function noteEdit(args: string[]): Promise<void> {
     note.bin = values.bin.toLowerCase().trim() || undefined;
     changed = true;
   }
+  if (values.detail !== undefined) {
+    const v = values.detail.trim();
+    note.detail = v.length > 0 ? v : undefined;
+    changed = true;
+  }
+  if (values["clear-refs"]) {
+    note.refs = undefined;
+    changed = true;
+  }
+  if (values["rm-ref"] && values["rm-ref"].length > 0) {
+    if (!note.refs) note.refs = [];
+    const indices = values["rm-ref"].map((s) => parseInt(s, 10)).filter((n) => !isNaN(n));
+    // Remove highest indices first to keep lower indices stable
+    indices.sort((a, b) => b - a);
+    for (const idx of indices) {
+      if (idx >= 0 && idx < note.refs.length) note.refs.splice(idx, 1);
+    }
+    if (note.refs.length === 0) note.refs = undefined;
+    changed = true;
+  }
+  if (values["add-ref"] && values["add-ref"].length > 0) {
+    if (!note.refs) note.refs = [];
+    for (const r of values["add-ref"]) note.refs.push(parseSourceRef(r));
+    changed = true;
+  }
 
   if (!changed) {
-    console.log("Nothing to update. Use --content, --type, --tags, --role, or --bin.");
+    console.log(
+      "Nothing to update. Use --content, --type, --tags, --role, --bin, --detail, --add-ref, --rm-ref, or --clear-refs.",
+    );
     return;
   }
 

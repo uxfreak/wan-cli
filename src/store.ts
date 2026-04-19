@@ -1,6 +1,12 @@
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
-import type { WanConfig, NotesStore, AffinityStore } from "./types";
+import type {
+  WanConfig,
+  NotesStore,
+  AffinityStore,
+  SessionStore,
+  TaskStore,
+} from "./types";
 
 let _root: string | null = null;
 
@@ -41,14 +47,19 @@ export function initProject(name?: string): string {
   const config: WanConfig = {
     name: name || basename(process.cwd()),
     createdAt: new Date().toISOString(),
-    version: 2,
+    version: 3,
   };
   const emptyNotes: NotesStore = { notes: [] };
   const emptyAffinity: AffinityStore = { labels: [], assignments: {} };
+  const emptySessions: SessionStore = { sessions: [], openSessionId: null };
+  const emptyTasks: TaskStore = { tasks: [], focusedId: null, history: [] };
 
   Bun.write(join(root, "config.json"), JSON.stringify(config, null, 2));
   Bun.write(join(root, "notes.json"), JSON.stringify(emptyNotes, null, 2));
   Bun.write(join(root, "affinity.json"), JSON.stringify(emptyAffinity, null, 2));
+  Bun.write(join(root, "sessions.json"), JSON.stringify(emptySessions, null, 2));
+  Bun.write(join(root, "tasks.json"), JSON.stringify(emptyTasks, null, 2));
+  Bun.write(join(root, "status.md"), "# Status\n\n_No status yet. `wan status set \"...\"` or `wan status edit`._\n");
   _root = root;
   return root;
 }
@@ -119,4 +130,49 @@ export function listSourceIds(): string[] {
 export function sourceExists(id: string): boolean {
   const path = join(getWanRoot(), "sources", `${id}.md`);
   return existsSync(path);
+}
+
+// ── Sessions ───────────────────────────────────────────────
+
+export async function readSessions(): Promise<SessionStore> {
+  const path = join(getWanRoot(), "sessions.json");
+  if (!existsSync(path)) return { sessions: [], openSessionId: null };
+  const text = await Bun.file(path).text();
+  return JSON.parse(text);
+}
+
+export async function writeSessions(store: SessionStore): Promise<void> {
+  const path = join(getWanRoot(), "sessions.json");
+  await Bun.write(path, JSON.stringify(store, null, 2));
+}
+
+// ── Tasks (work tree) ─────────────────────────────────────
+
+export async function readTasks(): Promise<TaskStore> {
+  const path = join(getWanRoot(), "tasks.json");
+  if (!existsSync(path)) return { tasks: [], focusedId: null, history: [] };
+  const text = await Bun.file(path).text();
+  return JSON.parse(text);
+}
+
+export async function writeTasks(store: TaskStore): Promise<void> {
+  const path = join(getWanRoot(), "tasks.json");
+  await Bun.write(path, JSON.stringify(store, null, 2));
+}
+
+// ── Status (narrative state) ──────────────────────────────
+
+export async function readStatus(): Promise<string> {
+  const path = join(getWanRoot(), "status.md");
+  if (!existsSync(path)) return "";
+  return Bun.file(path).text();
+}
+
+export async function writeStatus(content: string): Promise<void> {
+  const path = join(getWanRoot(), "status.md");
+  await Bun.write(path, content);
+}
+
+export function statusPath(): string {
+  return join(getWanRoot(), "status.md");
 }

@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { ensureInitialized, readNotes } from "../store";
-import { truncate, padRight } from "../utils";
+import { truncate, padRight, formatSourceRef } from "../utils";
 
 export async function noteList(args: string[]): Promise<void> {
   ensureInitialized();
@@ -53,6 +53,18 @@ export async function noteList(args: string[]): Promise<void> {
       console.log(`\n${n.id} [${n.role}]${typeLabel}${binLabel}`);
       console.log(`  ${n.content}`);
       if (n.tags.length > 0) console.log(`  tags: ${n.tags.join(", ")}`);
+      if (n.detail) console.log(`  detail: ${n.detail}`);
+      if (n.refs && n.refs.length > 0) {
+        console.log(`  refs:`);
+        n.refs.forEach((r, i) => console.log(`    [${i}] ${formatSourceRef(r)}`));
+      }
+      if (n.links && n.links.length > 0) {
+        console.log(`  links:`);
+        for (const l of n.links) {
+          const ctx = l.note ? `  // ${l.note}` : "";
+          console.log(`    —${l.kind}→ ${l.to}${ctx}`);
+        }
+      }
     }
     console.log(`\n${notes.length} note(s)`);
     return;

@@ -26,8 +26,11 @@ All data lives in a `.wan/` directory (created by `wan init` in your working dir
 .wan/
   config.json          # project metadata
   sources/             # raw thought dumps (S001.md, S002.md, ...)
-  notes.json           # synthesized work activity notes
+  notes.json           # synthesized work activity notes (with refs, links, detail)
   affinity.json        # WAAD labels and note-to-label assignments
+  tasks.json           # hierarchical work tree + focus stack + history log
+  sessions.json        # working sessions (intent + summary + auto-attached deltas)
+  status.md            # narrative "where I am right now" doc
 ```
 
 ## Concepts
@@ -143,6 +146,59 @@ wan affinity label rm L1-01       # Also unassigns notes and unparents children
 5. **Affinity map** — create L1 labels, assign notes, let themes emerge
 6. **Build hierarchy** — group L1→L2→L3 as patterns become clear
 7. **Export** with `wan export` for downstream use
+
+## Extensions — Long-Running Project Memory
+
+For multi-session work where you need to remember *what you were doing* and
+*where you left off*, wan adds three orthogonal layers on top of notes/affinity:
+
+- **Work tree** (`wan task`) — hierarchical breakdown of *what we're doing*
+  with focus stack and append-only history. Branches when work spawns
+  sub-efforts; rejoins via `pop` or `done`.
+- **Sessions** (`wan session`) — wall-clock working windows with intent at
+  start, summary at end. On end, auto-attaches notes/labels created during
+  the window.
+- **Status** (`wan status`) — freeform narrative "where I am" doc.
+- **Resume** (`wan resume`) — single bootstrap blob designed for AI session
+  startup. Includes status + current focus path + open branches + open
+  session + recent history + top open todos + L3 themes + counts.
+
+Plus enrichments to notes themselves:
+
+- **`--detail PATH`** — point a note at a fuller doc (the math, the diagram).
+- **`--ref FILE:LINES`** — first-class provenance back to source material.
+- **`wan ref add/list/rm`** — manage refs after creation.
+- **`wan link`** — note-to-note edges (`calls`, `produces`, `requires`,
+  `refines`, `relates`) for reconstructing a call/dataflow graph.
+- **`wan todo`** — surfaces unresolved data-holes & design-questions,
+  oldest first.
+
+### Recommended session protocol
+
+```bash
+wan resume                              # ingest state at session start
+wan session start "what I'm tackling"   # open the time window
+# ... work: notes, refs, task focus, edits
+wan status append "key observation"     # or `wan status set ...`
+wan session end "what got done"         # close + auto-attach
+git commit -am "session: ..."           # version everything
+```
+
+### Work tree commands
+
+```bash
+wan task                                # tree + current focus path
+wan task add "Build feature X" -i "rationale" --focus
+wan task add "Sub-task" -p T002 --focus
+wan task focus T004                     # records focus shift
+wan task pop                            # back to parent
+wan task done T003                      # close (auto-pops focus if focused)
+wan task abandon T009                   # explicit drop
+wan task block T010 "waiting on API"
+wan task history --n 20                 # chronological focus events
+wan task show T002                      # node details + recent events
+wan task tree --all                     # include done/abandoned
+```
 
 ## References
 

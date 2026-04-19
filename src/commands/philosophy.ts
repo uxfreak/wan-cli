@@ -285,4 +285,137 @@ const PHILOSOPHY = `
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  EXTENSIONS — Beyond the UX Book
+  Additions that adapt wan from pure UX research into a long-running,
+  multi-session project memory + workflow spine.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  THREE LAYERS — NOTES, AFFINITY, WORK TREE                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  Notes are FINDINGS — atomic things you discovered.                        │
+│  Affinity is THEMES — what those findings cluster into (inductive).        │
+│  The work tree is INTENT — what you set out to do, hierarchically.         │
+│                                                                            │
+│  The three are orthogonal:                                                 │
+│    • A note can be created during any task; tasks don't own notes.         │
+│    • A theme emerges from notes regardless of which task surfaced them.    │
+│    • A task can span many sessions; sessions can serve many tasks.         │
+│                                                                            │
+│  At session start: read STATUS + the focus path + open todos               │
+│  (or just run \`wan resume\` and get all of it in one blob).                │
+│                                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  THE WORK TREE — wan task                                                  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  A hierarchical tree of *what we're doing*, across abstraction levels.    │
+│  Branches when work spawns sub-efforts. Rejoins via pop or done.           │
+│  Every focus change is recorded in an append-only history log.             │
+│                                                                            │
+│      T001  Formalize Typst as math (active)                                │
+│      ├── T002  Build wan-cli for project mgmt (active)  ← focus path       │
+│      │   ├── T003  Extend types ✓                                          │
+│      │   ├── T004  ↳ wan task hierarchy (active)        ← current leaf     │
+│      │   └── T005  ↳ wan resume                                            │
+│      └── T006  Recursive descent over typst pipeline                       │
+│          ├── T007  L0 spine                                                │
+│          └── T008  L1 phases                                               │
+│                                                                            │
+│  STATUSES                                                                  │
+│    ·  pending     not started                                              │
+│    ▸  active      currently being worked on (can be a non-leaf)            │
+│    ✓  done        completed                                                │
+│    ✗  abandoned   explicitly dropped                                       │
+│    ⊘  blocked     waiting on something external                            │
+│                                                                            │
+│  COMMANDS                                                                  │
+│    wan task                          show tree + focus path                │
+│    wan task add "title" -p T001 -i "intent" --focus                        │
+│    wan task focus T004               record focus shift                    │
+│    wan task pop                      back to parent                        │
+│    wan task done T003                close + auto-pop if focused            │
+│    wan task history --n 20           recent focus events                   │
+│                                                                            │
+│  The work tree is the answer to: "where am I, and how did I get here?"    │
+│                                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  PROVENANCE — wan ref                                                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  Every note can carry first-class refs back to source material:            │
+│    wan ref add S001-03 typst/crates/typst-syntax/src/parser.rs:142-180     │
+│  This is stronger than tags — refs are structured (path + lines + note),   │
+│  enabling re-verification of any claim against the substrate it came from. │
+│                                                                            │
+│  Use --detail to point a note at a fuller doc (the math, the diagram,      │
+│  the code listing) when 1-3 sentences aren't enough.                       │
+│                                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  EDGES — wan link                                                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  Notes form a graph, not a flat list. Common edge kinds:                  │
+│    calls      A invokes B                                                  │
+│    produces   A constructs / yields B                                      │
+│    requires   A depends on B (precondition)                                │
+│    refines    A is a more detailed version of B                            │
+│    relates    generic association                                          │
+│                                                                            │
+│  The graph is what makes a function-by-function pipeline analysis          │
+│  reconstructable — without it, you have notes but not the call structure.  │
+│                                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  TIME — wan session                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  A session is a wall-clock working window with an explicit intent at       │
+│  the start and a summary at the end. On end, wan auto-attaches the notes   │
+│  and labels created during the session window — so future-you can ask      │
+│  "what happened on Tuesday?" and get a real answer.                        │
+│                                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  NARRATIVE — wan status                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  status.md is the freeform "where I am right now" doc. Stat is structured, │
+│  this is prose. Read it first thing every session.                         │
+│                                                                            │
+│    wan status set "..."     overwrite                                      │
+│    wan status append "..."  append a timestamped line                      │
+│    wan status edit          open in $EDITOR                                │
+│                                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  BOOTSTRAP — wan resume                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  Single command, single blob, drop-in for AI session startup or for a     │
+│  collaborator coming back after a break. Includes:                         │
+│    • status.md (narrative state)                                           │
+│    • current focus path (root → leaf)                                      │
+│    • open work-tree branches                                               │
+│    • open session (if any) and last closed                                 │
+│    • last 8 history events                                                 │
+│    • top open todos (data-holes + design-questions, oldest first)          │
+│    • L3 themes from affinity                                               │
+│    • store counts                                                          │
+│                                                                            │
+│  Run this first thing in every session.                                    │
+│                                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `.trim();
