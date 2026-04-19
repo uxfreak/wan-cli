@@ -1,3 +1,4 @@
+import { parseArgs } from "node:util";
 import { ensureInitialized, readNotes, writeNotes } from "../store";
 import { validateLinkKind, nowISO, truncate } from "../utils";
 import type { NoteLink, LinkKind } from "../types";
@@ -5,7 +6,7 @@ import type { NoteLink, LinkKind } from "../types";
 // wan link add <a> <b> --kind <calls|produces|requires|refines|relates> [context...]
 // wan link rm <a> <b>
 // wan link list [<noteId>]
-// wan link graph
+// wan link graph [--format text|mermaid|dot]
 export async function link(args: string[]): Promise<void> {
   ensureInitialized();
   const [sub, ...rest] = args;
@@ -21,7 +22,7 @@ export async function link(args: string[]): Promise<void> {
       await linkList(rest);
       break;
     case "graph":
-      await linkGraph();
+      await linkGraph(rest);
       break;
     default:
       throw new Error(`Unknown link command: ${sub}. Try: add, rm, list, graph`);
@@ -105,15 +106,75 @@ async function linkList(args: string[]): Promise<void> {
   }
 }
 
-async function linkGraph(): Promise<void> {
+async function linkGraph(args: string[]): Promise<void> {
+  const { values } = parseArgs({
+    args,
+    options: { format: { type: "string", short: "f", default: "text" } },
+    allowPositionals: false,
+  });
+  const fmt = (values.format ?? "text").toLowerCase();
+  if (!["text", "mermaid", "dot"].includes(fmt)) {
+    throw new Error(`Invalid format "${fmt}". Valid: text, mermaid, dot`);
+  }
+
   const store = await readNotes();
   const edges = store.notes.flatMap((n) =>
-    (n.links ?? []).map((l) => ({ from: n.id, to: l.to, kind: l.kind })),
+    (n.links ?? []).map((l) => ({ from: n.id, to: l.to, kind: l.kind, ctx: l.note })),
   );
   if (edges.length === 0) {
     console.log("No edges yet.");
     return;
   }
-  console.log(`# ${edges.length} edge(s)\n`);
-  for (const e of edges) console.log(`  ${e.from} —${e.kind}→ ${e.to}`);
+
+  if (fmt === "text") {
+    console.log(`# ${edges.length} edge(s)\n`);
+    for (const e of edges) console.log(`  ${e.from} —${e.kind}→ ${e.to}`);
+    return;
+  }
+
+  if (fmt === "mermaid") {
+    // Mermaid graph: node IDs are sanitised (S001-01 → S001_01) since the
+    // hyphen has special meaning in some Mermaid contexts.
+    const nodeId = (id: string) => id.replace(/[^A-Za-z0-9]/g, "_");
+    console.log("graph LR");
+    const seen = new Set<string>();
+    for (const e of edges) {
+      for (const id of [e.from, e.to]) {
+        if (!seen.has(id)) {
+          seen.add(id);
+          const note = store.notes.find((n) => n.id === id);
+          const label = note ? truncate(note.content, 40).replace(/"/g, "'") : id;
+          console.log(`  ${nodeId(id)}["${id}: ${label}"]`);
+        }
+      }
+    }
+    for (const e of edges) {
+      console.log(`  ${nodeId(e.from)} -->|${e.kind}| ${nodeId(e.to)}`);
+    }
+    return;
+  }
+
+  if (fmt === "dot") {
+    // Graphviz DOT.
+    console.log("digraph wan_links {");
+    console.log("  rankdir=LR;");
+    console.log('  node [shape=box, fontname="monospace"];');
+    const seen = new Set<string>();
+    for (const e of edges) {
+      for (const id of [e.from, e.to]) {
+        if (!seen.has(id)) {
+          seen.add(id);
+          const note = store.notes.find((n) => n.id === id);
+          const label = note
+            ? `${id}\\n${truncate(note.content, 40).replace(/"/g, "'")}`
+            : id;
+          console.log(`  "${id}" [label="${label}"];`);
+        }
+      }
+    }
+    for (const e of edges) {
+      console.log(`  "${e.from}" -> "${e.to}" [label="${e.kind}"];`);
+    }
+    console.log("}");
+  }
 }

@@ -53,6 +53,7 @@ export interface WanNote {
   detail?: string;       // Optional path to a fuller doc (math, code, diagrams)
   refs?: SourceRef[];    // First-class provenance back to source material
   links?: NoteLink[];    // Edges to other notes (call graph, dataflow, etc.)
+  taskIds?: string[];    // Explicit task associations (a note can support multiple tasks)
   createdAt: string;     // ISO 8601
   updatedAt: string | null;
 }

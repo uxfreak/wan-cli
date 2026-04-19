@@ -21,7 +21,13 @@
 //   wan task history / log [--n N]    chronological focus events
 
 import { parseArgs } from "node:util";
-import { ensureInitialized, readTasks, writeTasks } from "../store";
+import {
+  ensureInitialized,
+  readTasks,
+  writeTasks,
+  readNotes,
+  writeNotes,
+} from "../store";
 import {
   validateTaskStatus,
   validateTaskId,
@@ -94,9 +100,18 @@ export async function task(args: string[]): Promise<void> {
     case "log":
       await taskHistory(rest);
       break;
+    case "attach":
+      await taskAttach(rest);
+      break;
+    case "detach":
+      await taskDetach(rest);
+      break;
+    case "notes":
+      await taskNotes(rest[0]);
+      break;
     default:
       throw new Error(
-        `Unknown task command: ${sub}. Try: add, tree, show, edit, rm, focus, pop, done, abandon, block, unblock, current, history`,
+        `Unknown task command: ${sub}. Try: add, tree, show, edit, rm, focus, pop, done, abandon, block, unblock, current, history, attach, detach, notes`,
       );
   }
 }
@@ -474,6 +489,80 @@ async function taskPath(): Promise<void> {
     const t = path[i];
     const arrow = i === path.length - 1 ? "  ◀ now" : "";
     console.log(`${"  ".repeat(i)}${STATUS_GLYPH[t.status]} ${t.id}  ${t.title}${arrow}`);
+  }
+}
+
+// ── Note ↔ task attachment ────────────────────────────────
+//
+// A note can support multiple tasks. The attachment is stored on the note
+// (taskIds) so listing a note shows which tasks it backs without needing
+// per-task indexes. The reverse lookup (which notes back this task) is a
+// one-pass scan of the notes store.
+
+async function taskAttach(args: string[]): Promise<void> {
+  const [noteId, ...taskIds] = args;
+  if (!noteId || taskIds.length === 0) {
+    throw new Error("Usage: wan task attach <noteId> <taskId> [<taskId> ...]");
+  }
+  const tasks = await readTasks();
+  for (const tid of taskIds) {
+    validateTaskId(tid);
+    if (!tasks.tasks.find((t) => t.id === tid)) throw new Error(`Task ${tid} not found.`);
+  }
+  const notesStore = await readNotes();
+  const note = notesStore.notes.find((n) => n.id === noteId);
+  if (!note) throw new Error(`Note ${noteId} not found.`);
+  if (!note.taskIds) note.taskIds = [];
+  let added = 0;
+  for (const tid of taskIds) {
+    if (!note.taskIds.includes(tid)) {
+      note.taskIds.push(tid);
+      added += 1;
+    }
+  }
+  note.updatedAt = nowISO();
+  await writeNotes(notesStore);
+  console.log(`${noteId}: +${added} task(s); now → ${note.taskIds.join(", ")}`);
+}
+
+async function taskDetach(args: string[]): Promise<void> {
+  const [noteId, ...taskIds] = args;
+  if (!noteId || taskIds.length === 0) {
+    throw new Error("Usage: wan task detach <noteId> <taskId> [<taskId> ...]");
+  }
+  const notesStore = await readNotes();
+  const note = notesStore.notes.find((n) => n.id === noteId);
+  if (!note) throw new Error(`Note ${noteId} not found.`);
+  if (!note.taskIds || note.taskIds.length === 0) {
+    console.log(`${noteId} has no task attachments.`);
+    return;
+  }
+  const before = note.taskIds.length;
+  note.taskIds = note.taskIds.filter((t) => !taskIds.includes(t));
+  if (note.taskIds.length === 0) note.taskIds = undefined;
+  note.updatedAt = nowISO();
+  await writeNotes(notesStore);
+  const removed = before - (note.taskIds?.length ?? 0);
+  console.log(`${noteId}: −${removed} task(s); now → ${note.taskIds?.join(", ") ?? "(none)"}`);
+}
+
+async function taskNotes(taskId?: string): Promise<void> {
+  if (!taskId) throw new Error("Usage: wan task notes <taskId>");
+  validateTaskId(taskId);
+  const tasks = await readTasks();
+  const task = tasks.tasks.find((t) => t.id === taskId);
+  if (!task) throw new Error(`Task ${taskId} not found.`);
+  const notesStore = await readNotes();
+  const attached = notesStore.notes.filter((n) => n.taskIds?.includes(taskId));
+  console.log(`\n${task.id}  ${task.title}  [${task.status}]`);
+  if (attached.length === 0) {
+    console.log("  (no notes attached — use `wan task attach <noteId> <taskId>`)");
+    return;
+  }
+  console.log(`  ${attached.length} attached note(s):`);
+  for (const n of attached) {
+    const typeLabel = n.noteType !== "observation" ? ` {${n.noteType}}` : "";
+    console.log(`    ${n.id}${typeLabel}  ${truncate(n.content, 70)}`);
   }
 }
 

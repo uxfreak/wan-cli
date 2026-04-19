@@ -417,5 +417,26 @@ const PHILOSOPHY = `
 │                                                                            │
 └──────────────────────────────────────────────────────────────────────────────┘
 
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  AGAINST DOC ROT — wan doctor + the contributing checklist                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  wan describes itself in six places (cli HELP, README, guide, philosophy,  │
+│  CLAUDE.md, doctor). When the command surface changes, all six can drift   │
+│  silently. The hard prevention is structural:                              │
+│                                                                            │
+│    1. CONTRIBUTING.md holds the pre-commit checklist (read it once).      │
+│    2. cli.ts has a header comment listing the six places.                  │
+│    3. wan doctor mechanically verifies that every commands/*.ts is wired,  │
+│       every cli switch case appears in HELP, the workflow protocol is in   │
+│       guide, etc. Run it before commit.                                    │
+│    4. Single-commit discipline: code + every doc updated in one commit.    │
+│                                                                            │
+│  This is the local instantiation of the six rot-avoidance principles in   │
+│  CLAUDE.md (fix-completeness, grep-before-commit, soft-to-hard breaks,    │
+│  commit-scope honesty, close-the-loop in memory, stale-risk surface).     │
+│                                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `.trim();

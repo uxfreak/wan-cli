@@ -202,7 +202,39 @@ wan task block T010 "waiting on API"
 wan task history --n 20                 # chronological focus events
 wan task show T002                      # node details + recent events
 wan task tree --all                     # include done/abandoned
+
+# Note ↔ task attachment (explicit, beyond timestamp-windowed inference)
+wan task attach S001-03 T011 T012       # one note can back many tasks
+wan task detach S001-03 T012
+wan task notes T011                     # which notes back this task?
+wan note add ... --task T011 ...        # attach at creation time
 ```
+
+### Notes with awkward content
+
+When note content has Unicode arrows, math chars, backticks, or pipes that the
+shell would mangle, use `--from-file` (`-F`) or stdin:
+
+```bash
+wan note add -s S001 -r Formalizer -F /tmp/note.md
+echo "f : A → B  -- with arrows" | wan note add -s S001 -r Formalizer -
+wan note edit S001-03 -F /tmp/updated.md
+```
+
+### Graph output
+
+```bash
+wan link graph                          # text DAG (default)
+wan link graph -f mermaid               # paste into a Markdown file
+wan link graph -f dot                   # pipe to graphviz
+```
+
+### Contributing / preventing doc rot
+
+`wan` describes itself in six places (HELP, README, guide, philosophy,
+CLAUDE.md, doctor). Changes that don't update all six rot silently. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the pre-commit checklist; run
+`wan doctor` to mechanically verify before each commit.
 
 ## References
 

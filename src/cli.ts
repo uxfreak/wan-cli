@@ -18,6 +18,18 @@ import { todo } from "./commands/todo";
 import { task } from "./commands/task";
 import { resume } from "./commands/resume";
 import { guide } from "./commands/guide";
+import { doctor } from "./commands/doctor";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOC-ROT POLICY — read CONTRIBUTING.md before adding/changing commands.
+// Any change to the command surface must update, in one commit:
+//   1. this file (HELP block + switch case + import)
+//   2. README.md (commands table)
+//   3. src/commands/guide.ts (workflow patterns + decision rules)
+//   4. src/commands/philosophy.ts (extension methodology if conceptually new)
+//   5. ~/.claude/CLAUDE.md (the wan how-to-use section)
+// Run `wan doctor` to verify before commit.
+// ─────────────────────────────────────────────────────────────────────────────
 
 const HELP = `
 wan — Work Activity Notes CLI
@@ -45,12 +57,15 @@ Commands:
   resume                        Bootstrap blob: status + focus + history + open todos
   source add <file|->           Add a raw thought dump as source
 
-  note add -s -r [-n] [-d --ref] "text"
-                                Add a synthesized note. -d=detail path,
-                                --ref FILE:LINES (repeatable) for provenance
+  note add -s -r [-n] [-d --ref] [--task T00X]... "text" | -F PATH | -
+                                Add a synthesized note.
+                                -d=detail path; --ref FILE:LINES (repeatable);
+                                --task T00X (repeatable) attach to task(s);
+                                -F PATH reads content from file (avoids shell
+                                mangling of special chars); "-" reads stdin.
   note bulk -s -f <file>        Bulk import notes from JSON
   note list [--type] [--tag] [--source] [--role] [--bin] [--full]
-  note edit <id> [--content] [--type] [--tags] [--role] [--bin]
+  note edit <id> [--content "..." | -F PATH] [--type] [--tags] [--role] [--bin]
                                 [--detail PATH] [--add-ref ...] [--rm-ref N] [--clear-refs]
   note rm <id> [<id2> ...]      Remove note(s)
   stats                         Show note statistics
@@ -78,6 +93,9 @@ Commands:
   task done|abandon|block|unblock <id>
   task current | path           Breadcrumb root → current
   task history [--n N] [--task ID]   Chronological focus events
+  task attach <noteId> <taskId> [<taskId>...]   Attach a note to task(s)
+  task detach <noteId> <taskId> [<taskId>...]   Detach
+  task notes <taskId>           List notes attached to a task
 
   ref add <noteId> <file:lines> ["context"]   First-class provenance
   ref rm <noteId> <index>
@@ -86,7 +104,7 @@ Commands:
   link add <a> <b> --kind <calls|produces|requires|refines|relates> ["context"]
   link rm <a> <b>
   link list [<noteId>]
-  link graph                    All edges (text DAG)
+  link graph [--format text|mermaid|dot]   Pasteable graph output
 
   session start "intent"        Open a working session
   session end "summary"         Close + auto-attach notes/labels created within
@@ -112,6 +130,7 @@ Commands:
 
   guide                         Workflow runbook: protocol, patterns, anti-patterns
   philosophy                    Show WAN methodology and skills reference
+  doctor                        Doc-rot consistency check (run before commit)
 
 Flags:
   -s, --source    Source ID (S001, S002, ...)
@@ -233,6 +252,10 @@ export async function run(): Promise<void> {
 
     case "philosophy":
       philosophy();
+      break;
+
+    case "doctor":
+      await doctor(rest);
       break;
 
     default:

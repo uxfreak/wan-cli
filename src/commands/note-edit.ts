@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { ensureInitialized, readNotes, writeNotes } from "../store";
 import {
@@ -14,6 +15,7 @@ export async function noteEdit(args: string[]): Promise<void> {
     args,
     options: {
       content: { type: "string" },
+      "content-from-file": { type: "string", short: "F" },
       type: { type: "string", short: "n" },
       tags: { type: "string", short: "t" },
       role: { type: "string", short: "r" },
@@ -47,6 +49,12 @@ export async function noteEdit(args: string[]): Promise<void> {
 
   if (values.content !== undefined) {
     note.content = values.content;
+    changed = true;
+  }
+  if (values["content-from-file"] !== undefined) {
+    const path = values["content-from-file"];
+    if (!existsSync(path)) throw new Error(`File not found: ${path}`);
+    note.content = (await Bun.file(path).text()).trimEnd();
     changed = true;
   }
   if (values.type !== undefined) {

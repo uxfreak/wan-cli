@@ -85,6 +85,11 @@ const GUIDE = `
 │  Want to see what's still open                     → wan todo              │
 │  Want to see what we've done so far                → wan task history      │
 │  Want to see the call-graph between findings       → wan link graph        │
+│  Note content has special chars (math, code)       → wan note add -F PATH  │
+│  Want to anchor a note to a task explicitly        → wan task attach       │
+│  Want notes that back a task                       → wan task notes <id>   │
+│  Want a Mermaid/DOT diagram of the link graph      → wan link graph -f …   │
+│  About to commit a wan-cli change                  → wan doctor            │
 │                                                                            │
 └──────────────────────────────────────────────────────────────────────────────┘
 
@@ -119,8 +124,12 @@ const GUIDE = `
 │    wan note add -s S001 -r Formalizer \\                                    │
 │      --ref crates/foo/src/bar.rs:42-89 \\                                   │
 │      --detail formalization/parse/tokenize.md \\                           │
-│      "tokenize : Source → [Token] is a deterministic FA over Unicode."    │
+│      --task T011 \\                                                         │
+│      -F /tmp/note-content.md            # for math chars: avoid shell      │
 │    wan link add S001-01 S001-02 --kind calls "tokenize calls advance"     │
+│    wan task attach S001-01 T011 T012    # one note can back many tasks    │
+│    wan task notes T011                  # reverse lookup                  │
+│    wan link graph -f mermaid > graph.md # paste into a doc                │
 │                                                                            │
 │  PATTERN 5 — Surfacing themes (when 30+ notes exist)                       │
 │  ──────────────────────────────────────────────────                        │

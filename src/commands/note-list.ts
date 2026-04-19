@@ -65,6 +65,9 @@ export async function noteList(args: string[]): Promise<void> {
           console.log(`    —${l.kind}→ ${l.to}${ctx}`);
         }
       }
+      if (n.taskIds && n.taskIds.length > 0) {
+        console.log(`  tasks: ${n.taskIds.join(", ")}`);
+      }
     }
     console.log(`\n${notes.length} note(s)`);
     return;
