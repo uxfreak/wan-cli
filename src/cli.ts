@@ -9,6 +9,7 @@ import { stats } from "./commands/stats";
 import { exportNotes } from "./commands/export";
 import { affinity } from "./commands/affinity";
 import { philosophy } from "./commands/philosophy";
+import { render } from "./commands/render";
 
 const HELP = `
 wan — Work Activity Notes CLI
@@ -36,6 +37,15 @@ Commands:
   affinity ungroup <labelId>             Remove from parent
   affinity tree                          Show full WAAD hierarchy
   affinity unassigned                    Show ungrouped notes
+
+  render init "Deck Title"       Create a new card deck
+  render add --title "..." --body "..." [--label --highlight --accent --tag]
+  render list                    List all cards in the deck
+  render show <n>                Show card details
+  render edit <n> --title "..."  Edit a card
+  render rm <n>                  Remove a card
+  render clear                   Clear all cards
+  render [-o path.pdf]           Render deck to PDF via faux-render
 
   philosophy                    Show WAN methodology and skills reference
 
@@ -112,6 +122,10 @@ export async function run(): Promise<void> {
 
     case "export":
       await exportNotes(rest);
+      break;
+
+    case "render":
+      await render(rest);
       break;
 
     case "philosophy":
