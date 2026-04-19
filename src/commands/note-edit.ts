@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { ensureInitialized, readNotes, writeNotes } from "../store";
+import { ensureInitialized, readNotes, writeNotes, readConfig, getWanRoot } from "../store";
 import {
   validateNoteType,
   parseTags,
   parseSourceRef,
   nowISO,
+  runRefValidator,
 } from "../utils";
 
 export async function noteEdit(args: string[]): Promise<void> {
@@ -24,6 +25,7 @@ export async function noteEdit(args: string[]): Promise<void> {
       "add-ref": { type: "string", multiple: true },
       "rm-ref": { type: "string", multiple: true },
       "clear-refs": { type: "boolean", default: false },
+      "no-validate": { type: "boolean", default: false },
     },
     allowPositionals: true,
   });
@@ -95,7 +97,16 @@ export async function noteEdit(args: string[]): Promise<void> {
   }
   if (values["add-ref"] && values["add-ref"].length > 0) {
     if (!note.refs) note.refs = [];
-    for (const r of values["add-ref"]) note.refs.push(parseSourceRef(r));
+    const newRefs = values["add-ref"].map((r) => parseSourceRef(r));
+    if (!values["no-validate"]) {
+      const config = await readConfig();
+      if (config.validators?.ref) {
+        for (const r of newRefs) {
+          await runRefValidator(config.validators.ref, getWanRoot(), r);
+        }
+      }
+    }
+    for (const r of newRefs) note.refs.push(r);
     changed = true;
   }
 

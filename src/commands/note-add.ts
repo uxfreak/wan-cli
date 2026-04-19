@@ -1,6 +1,14 @@
 import { existsSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { ensureInitialized, readNotes, writeNotes, sourceExists, readTasks } from "../store";
+import {
+  ensureInitialized,
+  readNotes,
+  writeNotes,
+  sourceExists,
+  readTasks,
+  readConfig,
+  getWanRoot,
+} from "../store";
 import {
   validateNoteType,
   validateNotEmpty,
@@ -10,6 +18,7 @@ import {
   parseTags,
   parseSourceRef,
   nowISO,
+  runRefValidator,
 } from "../utils";
 import type { WanNote, SourceRef } from "../types";
 
@@ -28,6 +37,7 @@ export async function noteAdd(args: string[]): Promise<void> {
       ref: { type: "string", multiple: true },
       "from-file": { type: "string", short: "F" },
       task: { type: "string", multiple: true },
+      "no-validate": { type: "boolean", default: false },
     },
     allowPositionals: true,
   });
@@ -90,6 +100,15 @@ export async function noteAdd(args: string[]): Promise<void> {
   }
   if (values.ref && values.ref.length > 0) {
     const refs: SourceRef[] = values.ref.map((r) => parseSourceRef(r));
+    // Run per-project ref validator on each ref unless bypassed.
+    if (!values["no-validate"]) {
+      const config = await readConfig();
+      if (config.validators?.ref) {
+        for (const r of refs) {
+          await runRefValidator(config.validators.ref, getWanRoot(), r);
+        }
+      }
+    }
     note.refs = refs;
   }
   if (values.task && values.task.length > 0) {

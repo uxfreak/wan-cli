@@ -229,6 +229,31 @@ wan link graph -f mermaid               # paste into a Markdown file
 wan link graph -f dot                   # pipe to graphviz
 ```
 
+### Pluggable per-project validators
+
+`wan` is project-agnostic, but different projects have different ref schemas.
+Configure validators via `.wan/config.json`:
+
+```json
+{
+  "name": "my-project",
+  "validators": {
+    "ref": "validation/validate-ref.sh",
+    "markdownRoot": "docs"
+  }
+}
+```
+
+- `validators.ref` — script invoked on every `wan ref add` and `wan note add --ref`.
+  Receives the ref via env vars: `WAN_REF_PATH`, `WAN_REF_LINES`, `WAN_REF_NOTE`.
+  Non-zero exit refuses the ref. Use `--no-validate` to bypass.
+- `validators.markdownRoot` — directory `wan doctor` scans for broken
+  `[text](path)` markdown links.
+
+Default (no config) = passive: refs stored without validation. Add a hook for
+your project's schema (file:lines for code, BibTeX entry for papers,
+REST endpoint URLs, etc.) and bad inputs get refused at add-time.
+
 ### Contributing / preventing doc rot
 
 `wan` describes itself in six places (HELP, README, guide, philosophy,

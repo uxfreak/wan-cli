@@ -183,3 +183,55 @@ export function ago(iso: string): string {
   if (mo < 12) return `${mo}mo ago`;
   return `${Math.floor(mo / 12)}y ago`;
 }
+
+// ── Validator hook ────────────────────────────────────────
+// Run an optional per-project ref validator. Resolved relative to the .wan
+// parent directory. Receives the ref via env vars; refuses on non-zero exit.
+
+import { existsSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { dirname, isAbsolute, resolve } from "node:path";
+import type { SourceRef } from "./types";
+
+export async function runRefValidator(
+  validatorPath: string,
+  wanRoot: string,
+  ref: SourceRef,
+): Promise<void> {
+  // Resolve validator path relative to the project root (.wan's parent).
+  const projectRoot = dirname(wanRoot);
+  const fullPath = isAbsolute(validatorPath)
+    ? validatorPath
+    : resolve(projectRoot, validatorPath);
+
+  if (!existsSync(fullPath)) {
+    throw new Error(
+      `Configured ref validator not found: ${validatorPath} (resolved to ${fullPath}). ` +
+        `Update .wan/config.json or remove validators.ref.`,
+    );
+  }
+
+  await new Promise<void>((resolveP, rejectP) => {
+    const child = spawn(fullPath, [], {
+      env: {
+        ...process.env,
+        WAN_REF_PATH: ref.path,
+        WAN_REF_LINES: ref.lines ?? "",
+        WAN_REF_NOTE: ref.note ?? "",
+      },
+      stdio: ["ignore", "inherit", "inherit"],
+      cwd: projectRoot,
+    });
+    child.on("exit", (code) => {
+      if (code === 0) resolveP();
+      else
+        rejectP(
+          new Error(
+            `Ref validator refused: ${ref.path}${ref.lines ? `:${ref.lines}` : ""} ` +
+              `(exit code ${code}). Use --no-validate to bypass.`,
+          ),
+        );
+    });
+    child.on("error", rejectP);
+  });
+}

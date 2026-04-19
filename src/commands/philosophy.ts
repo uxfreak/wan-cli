@@ -418,6 +418,35 @@ const PHILOSOPHY = `
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
+│  PLUGGABLE VALIDATORS — schemas vary by project                            │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  wan stays project-agnostic by delegating ref validation to user-supplied  │
+│  scripts. Configure via .wan/config.json:                                  │
+│                                                                            │
+│    {                                                                       │
+│      "validators": {                                                       │
+│        "ref": "validation/validate-ref.sh",                                │
+│        "markdownRoot": "docs"                                              │
+│      }                                                                     │
+│    }                                                                       │
+│                                                                            │
+│  - validators.ref runs on every wan ref add / note add --ref. Receives     │
+│    the ref via env vars (WAN_REF_PATH, WAN_REF_LINES, WAN_REF_NOTE).      │
+│    Non-zero exit refuses. Bypass with --no-validate.                       │
+│  - validators.markdownRoot is scanned by wan doctor for broken links.      │
+│                                                                            │
+│  Different projects need different schemas — code citations, BibTeX,       │
+│  REST URLs, database tables. The hook stays user-controlled. Default       │
+│  (no config) is passive: store refs without validation.                    │
+│                                                                            │
+│  This keeps wan's doctrine intact: assert at the source rather than        │
+│  catch at the validation pass. Treat the storage layer as an active        │
+│  assertion, not a passive log.                                             │
+│                                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
 │  AGAINST DOC ROT — wan doctor + the contributing checklist                 │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                            │

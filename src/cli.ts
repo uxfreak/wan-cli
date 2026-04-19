@@ -97,7 +97,9 @@ Commands:
   task detach <noteId> <taskId> [<taskId>...]   Detach
   task notes <taskId>           List notes attached to a task
 
-  ref add <noteId> <file:lines> ["context"]   First-class provenance
+  ref add <noteId> <file:lines> ["context"] [--no-validate]
+                                First-class provenance. Runs validators.ref hook
+                                if configured in .wan/config.json (refuses bad refs).
   ref rm <noteId> <index>
   ref list [<noteId>]
 
@@ -130,7 +132,9 @@ Commands:
 
   guide                         Workflow runbook: protocol, patterns, anti-patterns
   philosophy                    Show WAN methodology and skills reference
-  doctor                        Doc-rot consistency check (run before commit)
+  doctor                        Doc-rot consistency check (run before commit).
+                                Project mode: also scans validators.markdownRoot
+                                for broken markdown links if configured.
 
 Flags:
   -s, --source    Source ID (S001, S002, ...)

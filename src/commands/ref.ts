@@ -1,5 +1,5 @@
-import { ensureInitialized, readNotes, writeNotes } from "../store";
-import { parseSourceRef, formatSourceRef, nowISO } from "../utils";
+import { ensureInitialized, readNotes, writeNotes, readConfig, getWanRoot } from "../store";
+import { parseSourceRef, formatSourceRef, nowISO, runRefValidator } from "../utils";
 import type { SourceRef } from "../types";
 
 // wan ref add <noteId> <file:lines> [context...]
@@ -25,9 +25,14 @@ export async function ref(args: string[]): Promise<void> {
 }
 
 async function refAdd(args: string[]): Promise<void> {
-  const [noteId, refRaw, ...noteParts] = args;
+  // Strip a --no-validate flag if present
+  const skipValidate = args.includes("--no-validate");
+  const positional = args.filter((a) => a !== "--no-validate");
+  const [noteId, refRaw, ...noteParts] = positional;
   if (!noteId || !refRaw) {
-    throw new Error('Usage: wan ref add <noteId> <file:lines> ["context note"]');
+    throw new Error(
+      'Usage: wan ref add <noteId> <file:lines> ["context note"] [--no-validate]',
+    );
   }
   const store = await readNotes();
   const note = store.notes.find((n) => n.id === noteId);
@@ -35,6 +40,15 @@ async function refAdd(args: string[]): Promise<void> {
 
   const context = noteParts.join(" ").trim() || undefined;
   const ref: SourceRef = parseSourceRef(refRaw, context);
+
+  // Run the per-project ref validator if configured.
+  if (!skipValidate) {
+    const config = await readConfig();
+    if (config.validators?.ref) {
+      await runRefValidator(config.validators.ref, getWanRoot(), ref);
+    }
+  }
+
   if (!note.refs) note.refs = [];
   note.refs.push(ref);
   note.updatedAt = nowISO();

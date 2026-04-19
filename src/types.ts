@@ -147,6 +147,29 @@ export interface WanConfig {
   name: string;
   createdAt: string;
   version: number;
+  /**
+   * Optional per-project validators. Schemas vary by project — wan stays
+   * project-agnostic by delegating to user-supplied scripts.
+   */
+  validators?: ValidatorConfig;
+}
+
+export interface ValidatorConfig {
+  /**
+   * Path (relative to .wan parent) to a script that validates each ref at
+   * `wan ref add` / `wan note add --ref` time. Receives the ref's components
+   * via env vars: WAN_REF_PATH, WAN_REF_LINES, WAN_REF_NOTE.
+   * Non-zero exit refuses the ref. Stdout/stderr are surfaced to the user.
+   * If unset (default), refs are stored without validation (passive).
+   */
+  ref?: string;
+  /**
+   * Path (relative to .wan parent) to a directory of markdown files that
+   * `wan doctor` should scan for broken links. Each `[text](path)` link is
+   * verified to resolve relative to its containing file.
+   * If unset, no markdown link check runs.
+   */
+  markdownRoot?: string;
 }
 
 export interface NotesStore {

@@ -1,17 +1,23 @@
 // `wan doctor` — consistency checks against doc-rot.
 //
-// Runs against the wan-cli source tree itself. Catches the common rot:
-//   - a command exists in cli.ts switch but isn't documented in HELP
-//   - a commands/*.ts file exists but isn't imported / wired by cli.ts
-//   - HELP doesn't mention `wan guide` and `wan philosophy`
-//   - README.md misses a public command
-//   - guide/philosophy text is out of date relative to the command set
+// Two modes:
 //
-// This is an `is doc up to date with code` check, not a runtime check on the
-// user's project. Run it before committing wan-cli changes.
+// (1) wan-cli-internal mode (when run inside the wan-cli source tree):
+//     - a command exists in cli.ts switch but isn't documented in HELP
+//     - a commands/*.ts file exists but isn't imported / wired by cli.ts
+//     - HELP doesn't mention `wan guide` and `wan philosophy`
+//     - README.md misses a public command
+//     - guide/philosophy text is out of date relative to the command set
+//
+// (2) project mode (when run inside any wan-initialized project):
+//     - if .wan/config.json has validators.markdownRoot, scan that directory
+//       for broken [text](path) markdown links
+//
+// Both modes apply if both conditions hold. Run before committing.
 
-import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve as pathResolve } from "node:path";
+import { isInitialized, getWanRoot, readConfig } from "../store";
 
 interface Issue {
   level: "error" | "warning";
@@ -173,6 +179,33 @@ export async function doctor(_args: string[]): Promise<void> {
     }
   }
 
+  // ── PROJECT MODE — markdown link checking per validators.markdownRoot ──
+  if (isInitialized()) {
+    try {
+      const config = await readConfig();
+      const mdRoot = config.validators?.markdownRoot;
+      if (mdRoot) {
+        const wanRoot = getWanRoot();
+        const projectRoot = dirname(wanRoot);
+        const scanRoot = isAbsolute(mdRoot) ? mdRoot : pathResolve(projectRoot, mdRoot);
+        if (!existsSync(scanRoot)) {
+          issues.push({
+            level: "warning",
+            area: "markdown",
+            message: `validators.markdownRoot is set to "${mdRoot}" but ${scanRoot} doesn't exist`,
+          });
+        } else {
+          const broken = scanMarkdownLinks(scanRoot);
+          for (const b of broken) {
+            issues.push({ level: "error", area: "markdown", message: b });
+          }
+        }
+      }
+    } catch {
+      // Config read failed; project mode skipped silently.
+    }
+  }
+
   // ── Report ─────────────────────────────────────────────
   if (issues.length === 0) {
     console.log("✓ wan doctor: all consistency checks passed.");
@@ -203,4 +236,67 @@ function findWanRoot(): string | null {
 async function safeRead(path: string): Promise<string | null> {
   if (!existsSync(path)) return null;
   return Bun.file(path).text();
+}
+
+// Recursively walk a directory and collect all .md files.
+function walkMarkdown(dir: string): string[] {
+  const out: string[] = [];
+  const stack = [dir];
+  while (stack.length > 0) {
+    const cur = stack.pop()!;
+    let entries: string[];
+    try {
+      entries = readdirSync(cur);
+    } catch {
+      continue;
+    }
+    for (const e of entries) {
+      if (e.startsWith(".")) continue;
+      const full = join(cur, e);
+      let st;
+      try {
+        st = statSync(full);
+      } catch {
+        continue;
+      }
+      if (st.isDirectory()) stack.push(full);
+      else if (e.endsWith(".md")) out.push(full);
+    }
+  }
+  return out;
+}
+
+// Scan all markdown files under `root` for [text](path) links.
+// Verify each link's target file resolves (skip URLs and pure anchors).
+// Returns a list of broken-link descriptions.
+function scanMarkdownLinks(root: string): string[] {
+  const broken: string[] = [];
+  const linkRegex = /\]\(([^)]+)\)/g;
+  for (const md of walkMarkdown(root)) {
+    let text: string;
+    try {
+      text = readFileSync(md, "utf8");
+    } catch {
+      continue;
+    }
+    const seen = new Set<string>();
+    let m: RegExpExecArray | null;
+    while ((m = linkRegex.exec(text)) !== null) {
+      const link = m[1];
+      if (seen.has(link)) continue;
+      seen.add(link);
+      // Skip URLs and pure anchors
+      if (link.startsWith("http://") || link.startsWith("https://") || link.startsWith("mailto:")) continue;
+      const filePart = link.split("#")[0];
+      if (!filePart) continue;
+      const target = isAbsolute(filePart)
+        ? filePart
+        : pathResolve(dirname(md), filePart);
+      if (!existsSync(target)) {
+        const rel = md.startsWith(root) ? md.slice(root.length + 1) : md;
+        broken.push(`broken link in ${rel}: ${link}`);
+      }
+    }
+  }
+  return broken;
 }

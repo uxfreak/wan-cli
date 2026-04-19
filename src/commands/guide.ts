@@ -90,6 +90,10 @@ const GUIDE = `
 │  Want notes that back a task                       → wan task notes <id>   │
 │  Want a Mermaid/DOT diagram of the link graph      → wan link graph -f …   │
 │  About to commit a wan-cli change                  → wan doctor            │
+│  Want refs validated at add-time (per-project)     → set validators.ref    │
+│                                                       in .wan/config.json  │
+│  Want broken-link check on your project docs       → set validators.       │
+│                                                       markdownRoot         │
 │                                                                            │
 └──────────────────────────────────────────────────────────────────────────────┘
 

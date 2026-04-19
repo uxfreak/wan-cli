@@ -38,6 +38,7 @@ Before committing any change to the wan command surface, do all of these:
 
 ## What `wan doctor` checks
 
+**Always (wan-cli-internal):**
 - Every `commands/*.ts` is imported by `cli.ts`.
 - Every top-level `case` in the cli switch appears somewhere in `HELP`.
 - `HELP` mentions `wan guide` and `wan philosophy`.
@@ -47,7 +48,38 @@ Before committing any change to the wan command surface, do all of these:
 - `CONTRIBUTING.md` exists.
 - `~/.claude/CLAUDE.md` mentions `wan resume` (the AI bootstrap).
 
+**Project mode (when run inside a `.wan/`-bearing project):**
+- If `.wan/config.json` has `validators.markdownRoot`, scan that directory
+  recursively for `[text](path)` markdown links and verify each resolves.
+
 It does **not** check semantic accuracy — that's still your job. But it catches the mechanical drift that's both common and silent.
+
+## Pluggable validators (project-side configuration)
+
+`wan` is project-agnostic. Per-project schemas via `.wan/config.json`:
+
+```json
+{
+  "validators": {
+    "ref": "path/to/validate-ref.sh",
+    "markdownRoot": "docs"
+  }
+}
+```
+
+- **`validators.ref`** runs on every `wan ref add` and `wan note add --ref`.
+  The script receives the ref via env vars (`WAN_REF_PATH`, `WAN_REF_LINES`,
+  `WAN_REF_NOTE`) and refuses on non-zero exit. Use `--no-validate` to bypass.
+- **`validators.markdownRoot`** is the directory `wan doctor` scans for
+  broken markdown links.
+
+Why pluggable: a code-formalization project validates `path:lines` against
+the source tree; a paper-citation project validates BibTeX entries against
+a bibliography database; a REST-catalog project pings URLs. The schema is
+project-specific, the hook stays user-controlled.
+
+If neither validator is set, behavior is the prior passive (store-as-typed)
+default — no breakage for existing projects.
 
 ## Building
 
