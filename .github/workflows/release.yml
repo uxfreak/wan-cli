@@ -9,21 +9,9 @@ permissions:
   contents: write
 
 jobs:
-  build-darwin:
-    name: Build darwin (${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: arm64
-            runner: macos-latest
-            target: bun-darwin-arm64
-            asset: wan-darwin-arm64
-          - arch: x64
-            runner: macos-13
-            target: bun-darwin-x64
-            asset: wan-darwin-x64
+  build-darwin-arm64:
+    name: Build darwin arm64
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -32,12 +20,19 @@ jobs:
       - name: Build
         run: |
           mkdir -p dist
-          bun build src/index.ts --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.asset }}
+          bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile dist/wan-darwin-arm64
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.asset }}
-          path: dist/${{ matrix.asset }}
+          name: wan-darwin-arm64
+          path: dist/wan-darwin-arm64
           if-no-files-found: error
+
+  # darwin-x64 (Intel Macs) is not yet shipped — the free-tier macos-13
+  # runner queue was unreliably slow, blocking releases. Revisit once
+  # Apple Silicon coverage is verified and we have signing automated.
+  # build-darwin-x64:
+  #   runs-on: macos-13
+  #   ...
 
   build-linux-windows:
     name: Build linux + windows (cross-compile)
@@ -63,7 +58,7 @@ jobs:
 
   release:
     name: Publish release
-    needs: [build-darwin, build-linux-windows]
+    needs: [build-darwin-arm64, build-linux-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
