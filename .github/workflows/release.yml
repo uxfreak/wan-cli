@@ -9,29 +9,9 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            target: bun-darwin-arm64
-            asset: wan-darwin-arm64
-          - os: macos-13
-            target: bun-darwin-x64
-            asset: wan-darwin-x64
-          - os: ubuntu-latest
-            target: bun-linux-x64
-            asset: wan-linux-x64
-          - os: ubuntu-latest
-            target: bun-linux-arm64
-            asset: wan-linux-arm64
-          - os: windows-latest
-            target: bun-windows-x64
-            asset: wan-windows-x64.exe
-
+  release:
+    name: Build + publish
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -40,36 +20,21 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Build binary
-        shell: bash
+      - name: Build all targets
         run: |
-          bun build src/index.ts \
-            --compile \
-            --target=${{ matrix.target }} \
-            --outfile ${{ matrix.asset }}
+          set -euxo pipefail
+          mkdir -p dist
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.asset }}
-          path: ${{ matrix.asset }}
-          if-no-files-found: error
+          # Bun cross-compiles to any supported target from any host.
+          bun build src/index.ts --compile --target=bun-darwin-arm64  --outfile dist/wan-darwin-arm64
+          bun build src/index.ts --compile --target=bun-darwin-x64    --outfile dist/wan-darwin-x64
+          bun build src/index.ts --compile --target=bun-linux-x64     --outfile dist/wan-linux-x64
+          bun build src/index.ts --compile --target=bun-linux-arm64   --outfile dist/wan-linux-arm64
+          bun build src/index.ts --compile --target=bun-windows-x64   --outfile dist/wan-windows-x64.exe
 
-  release:
-    name: Publish release
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
+          ls -la dist/
 
-      - name: List artifacts
-        run: ls -la dist/
-
-      - name: Create release
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
