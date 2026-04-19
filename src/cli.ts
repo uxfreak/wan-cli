@@ -17,11 +17,28 @@ import { link } from "./commands/link";
 import { todo } from "./commands/todo";
 import { task } from "./commands/task";
 import { resume } from "./commands/resume";
+import { guide } from "./commands/guide";
 
 const HELP = `
 wan — Work Activity Notes CLI
 
 Usage: wan <command> [options]
+
+WORKFLOW (the six-command core loop)
+  1. wan resume                       — at session start, ingest state
+  2. wan session start "intent"       — open the time window
+  3. wan task focus <id>              — set the working leaf  (or task add + --focus)
+  4. wan note add -s S0X -r ROLE "…"  — as you discover things  (--ref, --detail)
+  5. wan session end "summary"        — close + auto-attach deltas
+  6. git commit -am "…"               — version everything
+
+THREE LAYERS
+  notes      = atomic findings (1-3 sentences, typed)
+  affinity   = emergent themes (L1→L2→L3, strictly inductive)
+  task tree  = hierarchical intent with focus stack and history log
+
+For workflow patterns and decision rules:  wan guide
+For methodology theory:                    wan philosophy
 
 Commands:
   init                          Initialize .wan/ in current directory
@@ -93,6 +110,7 @@ Commands:
   render clear                   Clear all cards
   render [-o path.pdf]           Render deck to PDF via faux-render
 
+  guide                         Workflow runbook: protocol, patterns, anti-patterns
   philosophy                    Show WAN methodology and skills reference
 
 Flags:
@@ -207,6 +225,10 @@ export async function run(): Promise<void> {
 
     case "render":
       await render(rest);
+      break;
+
+    case "guide":
+      guide();
       break;
 
     case "philosophy":

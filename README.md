@@ -184,6 +184,10 @@ wan session end "what got done"         # close + auto-attach
 git commit -am "session: ..."           # version everything
 ```
 
+For workflow patterns, decision rules ("when to add a note vs a task"), and
+canonical sequences, run `wan guide`. For methodology theory, `wan philosophy`.
+The flat command reference is `wan --help` (now with a workflow header).
+
 ### Work tree commands
 
 ```bash
