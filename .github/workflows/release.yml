@@ -9,33 +9,69 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build + publish
+  build-darwin:
+    name: Build darwin (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-latest
+            target: bun-darwin-arm64
+            asset: wan-darwin-arm64
+          - arch: x64
+            runner: macos-13
+            target: bun-darwin-x64
+            asset: wan-darwin-x64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Build
+        run: |
+          mkdir -p dist
+          bun build src/index.ts --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.asset }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+
+  build-linux-windows:
+    name: Build linux + windows (cross-compile)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
-      - name: Build all targets
+      - name: Build
         run: |
           set -euxo pipefail
           mkdir -p dist
-
-          # Bun cross-compiles to any supported target from any host.
-          bun build src/index.ts --compile --target=bun-darwin-arm64  --outfile dist/wan-darwin-arm64
-          bun build src/index.ts --compile --target=bun-darwin-x64    --outfile dist/wan-darwin-x64
           bun build src/index.ts --compile --target=bun-linux-x64     --outfile dist/wan-linux-x64
           bun build src/index.ts --compile --target=bun-linux-arm64   --outfile dist/wan-linux-arm64
           bun build src/index.ts --compile --target=bun-windows-x64   --outfile dist/wan-windows-x64.exe
-
           ls -la dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-windows
+          path: dist/*
+          if-no-files-found: error
 
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
+  release:
+    name: Publish release
+    needs: [build-darwin, build-linux-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: ls -la dist/
+      - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
